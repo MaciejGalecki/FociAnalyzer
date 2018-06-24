@@ -20,8 +20,8 @@ class ImageTools():
 		"""Performs Watershed algorithm (splitting circles), binary image on input"""
 		return None
 
-	def GrayWatershed():
-		"""Performs Watershed algorithm (splitting circles), grayscale image on input"""
+	def greyWatershed():
+		"""Performs Watershed algorithm (splitting circles), greyscale image on input"""
 		return None
 
 

@@ -5,18 +5,18 @@ class FindFoci( ImageTools ):
 		"""Load image etc."""
 		return None
 
-	def PrepareGrayScale():
-		"""Prepares grayscale 256 bit image. Chooses the RGB channel with the highest contrast,
+	def PrepareGreyScale():
+		"""Prepares greyscale 256 bit image. Chooses the RGB channel with the highest contrast,
 		   subtracks background etc."""
 		return None
 
 	def PrepareBinary():
-		"""Prepares binary image. PrepareGrayScale must by used first"""
+		"""Prepares binary image. PrepareGreyScale must by used first"""
 		return None
 
-	def FindGrayScale():
+	def FindGreyScale():
 		"""Find the coordinations of foci centers and measures their sizes.
-		   Uses grayscale image."""
+		   Uses greyscale image."""
 		return None
 
 	def FindBinary():

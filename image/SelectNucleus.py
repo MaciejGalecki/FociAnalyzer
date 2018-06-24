@@ -10,8 +10,8 @@ class SelectNucleus( ImageTools ):
 		"""Loads a single image to opencv format"""
 		return None
 
-	def ConvertToGrayScale():
-		"""creates a temporary grayscale image, later on we will need RGB one too"""
+	def ConvertTogreyScale():
+		"""creates a temporary greyscale image, later on we will need RGB one too"""
 		return None
 
 	def SplitNucleus():
