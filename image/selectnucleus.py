@@ -1,4 +1,6 @@
-class SelectNucleus( ImageTools ):
+from . import imagetools as it
+
+class SelectNucleus( it.ImageTools ):
 	"""Find each nucleus on the image, split them, enumarate and create new images
 	   with nucleus at the center"""
 
