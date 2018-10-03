@@ -14,6 +14,9 @@ class SelectNucleus(it.ImageTools):
         self.tiff = tc.opentiff(path)
         self.img = self.tiff.read()[1]
         self.img = np.array(self.img, dtype=np.uint8)
+        self.org_img = self.img.copy()
+        # just temporary
+        self.grayscale = True
 
     def load_image(self, path):
         """Loads a single image to opencv format"""
@@ -21,7 +24,15 @@ class SelectNucleus(it.ImageTools):
 
     def convert_to_grey_scale(self):
         """creates a temporary greyscale image, later on we will need RGB one too"""
-        return None
+
+        if self.grayscale:
+            pass
+        else:
+            # convert to grayscale
+            pass
+
+        # We need some blurring to reduce high frequency noise
+        self.img = cv2.GaussianBlur(self.img, (5, 5), 0)
 
     def split_nucleus(self):
         """split image and into few parts, one neclues in each"""
@@ -35,11 +46,9 @@ class SelectNucleus(it.ImageTools):
         self.img, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         big_contour = []
-        max = 0
         for i in contours:
             area = cv2.contourArea(i)  # --- find the contour having biggest area ---
-            if (area > 5000):
-                max = area
+            if area > 5000:
                 big_contour.append(i)
 
         self.img = cv2.cvtColor(self.img, cv2.COLOR_GRAY2RGB)
@@ -47,11 +56,18 @@ class SelectNucleus(it.ImageTools):
         # draw rectangles around contours
         for contour in big_contour:
             (x, y, w, h) = cv2.boundingRect(contour)
-            cv2.rectangle(self.img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            cv2.rectangle(self.org_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-        cv2.drawContours(self.img, big_contour, -1, (255, 0, 0), 3)
+        cv2.drawContours(self.org_img, big_contour, -1, (255, 0, 0), 3)
 
-        cv2.imshow('i', self.img)
+        # calculate the center of the mass
+        for c in big_contour:
+            M = cv2.moments(c)
+            cX = int(M["m10"] / M["m00"])
+            cY = int(M["m01"] / M["m00"])
+            cv2.circle(self.org_img, (cX, cY), 7, (255, 255, 255), -1)
+
+        cv2.imshow('i', self.org_img)
         cv2.waitKey(0)
 
     def center_nucles(self):
