@@ -6,21 +6,33 @@ import tiffcapture as tc
 
 class SelectNucleus(it.ImageTools):
     """Find each nucleus on the image, split them, enumarate and create new images with nucleus at the center"""
-    tiff = None
-    img = None
 
-    def __init__(self, path):
+    def __init__(self, path, debug, output_name):
         """Load image etc."""
+        self.debug = debug
+        self.output_name = output_name
+        self.current_frame = 0
         self.tiff = tc.opentiff(path)
-        self.img = self.tiff.read()[1]
-        self.img = np.array(self.img, dtype=np.uint8)
-        self.org_img = self.img.copy()
+
         # just temporary
         self.grayscale = True
+        self.big_contour = []
+        self.centers = []
+        self.images = []
 
-    def load_image(self, path):
-        """Loads a single image to opencv format"""
-        return None
+        """Loads all images from TIFF"""
+        _,temp_img = self.tiff.retrieve()
+        temp_img = np.array(temp_img, dtype=np.uint8)
+        self.images.append(temp_img)
+
+        for temp_img in self.tiff:
+            self.images.append(np.array(temp_img, dtype=np.uint8))
+
+        self.img = np.array(self.images[0], dtype=np.uint8)
+        self.org_img = self.img.copy()
+        self.all_frames = len(self.images)
+
+
 
     def convert_to_grey_scale(self):
         """creates a temporary greyscale image, later on we will need RGB one too"""
@@ -42,37 +54,50 @@ class SelectNucleus(it.ImageTools):
         kernel = np.ones((10, 10), np.uint8)
         thresh = cv2.dilate(thresh, kernel, iterations=1)
 
-        cv2.imshow('a', self.img)
         self.img, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        big_contour = []
         for i in contours:
             area = cv2.contourArea(i)  # --- find the contour having biggest area ---
             if area > 5000:
-                big_contour.append(i)
+                self.big_contour.append(i)
 
-        self.img = cv2.cvtColor(self.img, cv2.COLOR_GRAY2RGB)
+        color = [255, 255, 255]
+        stencil = np.zeros(self.img.shape).astype(self.img.dtype)
+        cv2.fillPoly(stencil, self.big_contour, color)
+        result = cv2.bitwise_and(self.org_img, stencil)
 
-        # draw rectangles around contours
-        for contour in big_contour:
-            (x, y, w, h) = cv2.boundingRect(contour)
-            cv2.rectangle(self.org_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        if not self.debug:
+            for idx, contour in enumerate(self.big_contour):
+                (x, y, w, h) = cv2.boundingRect(contour)
+                temp_img = result.copy()
+                roi = temp_img[y:y+h, x:x+w]
+                cv2.imwrite(str(self.output_name) + '_' + 'frame(' + str(self.current_frame)+ ')_' +  str(idx) + '_black' + '.jpg', roi)
+                temp_img = self.org_img.copy()
+                roi = temp_img[y:y+h, x:x+w]
+                cv2.imwrite(str(self.output_name) + '_' + 'frame(' + str(self.current_frame)+ ')_' + str(idx)  + '.jpg', roi)                
 
-        cv2.drawContours(self.org_img, big_contour, -1, (255, 0, 0), 3)
 
+        if self.debug:
+            self.img = cv2.cvtColor(self.img, cv2.COLOR_GRAY2RGB)
+            for contour in self.big_contour:
+                (x, y, w, h) = cv2.boundingRect(contour)
+                cv2.rectangle(self.org_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+            cv2.drawContours(self.org_img, self.big_contour, -1, (255, 0, 0), 3)
+            cv2.imshow('i', self.org_img)
+            cv2.waitKey(0)            
+
+
+
+    def center_nucles(self):
         # calculate the center of the mass
-        for c in big_contour:
+        for c in self.big_contour:
             M = cv2.moments(c)
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
-            cv2.circle(self.org_img, (cX, cY), 7, (255, 255, 255), -1)
-
-        cv2.imshow('i', self.org_img)
-        cv2.waitKey(0)
-
-    def center_nucles(self):
-        """Find the mass center of the nucleus and place it at the center of the image"""
-        return None
+            self.centers.append([cX, cY])
+            if self.debug:
+                cv2.circle(self.org_img, (cX, cY), 7, (255, 255, 255), -1)
 
     @property
     def transformation(self):
@@ -82,4 +107,14 @@ class SelectNucleus(it.ImageTools):
 
     def show_image(self):
         """Displays frame of the image"""
+        cv2.imshow('i', self.org_img)
+        cv2.waitKey(0)
         return None
+
+    def set_frame(self, frame):
+        self.current_frame = frame
+        self.big_contour = []
+        self.centers = []
+        self.img = np.array(self.images[frame], dtype=np.uint8)
+        self.org_img = self.img.copy()
+
