@@ -29,9 +29,14 @@ class SelectNucleus(it.ImageTools):
             self.images.append(np.array(temp_img, dtype=np.uint8))
 
         self.img = np.array(self.images[0], dtype=np.uint8)
+        self.thresh = self.img
         self.org_img = self.img.copy()
         self.all_frames = len(self.images)
 
+
+    def apply_clahe(self, clipLimit=2, tileGridSize=(6,6)):
+        clahe = cv2.createCLAHE(clipLimit=clipLimit, tileGridSize=tileGridSize)
+        self.img = clahe.apply(self.img)
 
 
     def convert_to_grey_scale(self):
@@ -46,20 +51,40 @@ class SelectNucleus(it.ImageTools):
         # We need some blurring to reduce high frequency noise
         self.img = cv2.GaussianBlur(self.img, (5, 5), 0)
 
+    def apply_threshold(self):
+        # _, self.thresh = cv2.threshold(self.img, 100, 255, 0)
+        # _, self.thresh = cv2.threshold(self.img, 0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        self.thresh = cv2.adaptiveThreshold(self.img,255,cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY,201,2) #TODO: more algorithms
+
+        # kernel = np.ones((5, 5), np.uint8) #TODO, check which better, this or erode
+        # self.thresh = cv2.morphologyEx(self.thresh,cv2.MORPH_OPEN,kernel, iterations = 1)
+
+        kernel = np.ones((5, 5), np.uint8)
+        self.thresh = cv2.erode(self.thresh, kernel, iterations=1)
+
+        kernel = np.ones((4, 4), np.uint8)#TODO: fnd best one
+        self.thresh = cv2.dilate(self.thresh, kernel, iterations=5)  
+        # kernel = np.ones((2, 2), np.uint8)
+        # self.thresh = cv2.dilate(self.thresh, kernel, iterations=5)
+
     def split_nucleus(self):
         """split image and into few parts, one neclues in each"""
-        _, thresh = cv2.threshold(self.img, 100, 255, 0)
-        kernel = np.ones((2, 2), np.uint8)
-        thresh = cv2.erode(thresh, kernel, iterations=1)
-        kernel = np.ones((10, 10), np.uint8)
-        thresh = cv2.dilate(thresh, kernel, iterations=1)
-
-        self.img, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        self.img, contours, hierarchy = cv2.findContours(self.thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         for i in contours:
             area = cv2.contourArea(i)  # --- find the contour having biggest area ---
             if area > 5000:
                 self.big_contour.append(i)
+        #check Solidity
+        big_temp = []
+        for cnt in self.big_contour:
+            area = cv2.contourArea(cnt)
+            hull = cv2.convexHull(cnt)
+            hull_area = cv2.contourArea(hull)
+            solidity = area/hull_area
+            if solidity > 0.95:
+                big_temp.append(cnt)
+        self.big_contour = big_temp
 
         color = [255, 255, 255]
         stencil = np.zeros(self.img.shape).astype(self.img.dtype)
@@ -107,9 +132,18 @@ class SelectNucleus(it.ImageTools):
 
     def show_image(self):
         """Displays frame of the image"""
-        cv2.imshow('i', self.org_img)
+        cv2.imshow('i', self.img)
         cv2.waitKey(0)
         return None
+
+    def show_threshold(self):
+        """Displays frame of the image"""
+        cv2.imshow('i', self.thresh)
+        cv2.waitKey(0)
+        return None
+    
+    def save_img(self,name):
+        cv2.imwrite(name + '.png', self.img)
 
     def set_frame(self, frame):
         self.current_frame = frame
