@@ -4,8 +4,11 @@ import glob
 
 window_size = {}
 file_number = 0
-for file in glob.glob("/home/maciek/DOKTORAT/all_data/all_images/*"):
-	a = sn.SelectNucleus(file,False, 'output_mean_c/'+str(file_number), window_size)
+# for file in glob.glob("/home/maciek/DOKTORAT/all_data/all_images/*"):
+
+for file in glob.glob("/home/maciek/DOKTORAT/Harry/0Gy/*"):
+	# a = sn.SelectNucleus(file,False, 'output_mean_c/'+str(file_number), window_size)
+	a = sn.SelectNucleus(file,False, 'test/'+str(file_number), window_size)
 	# for i in range (0, a.all_frames):
 	# 	a.set_frame(i)
 	# 	a.convert_to_grey_scale()
@@ -13,17 +16,19 @@ for file in glob.glob("/home/maciek/DOKTORAT/all_data/all_images/*"):
 	# 	# # a.center_nucles()
 	# 	a.show_image()
 
-	a.set_frame(1)
+	# a.set_frame(1)
 	a.convert_to_grey_scale()
+	a.show_image()	
 	a.apply_clahe()
 	a.apply_threshold()
 	# a.convert_to_grey_scale()
 	a.split_nucleus()
 	# # a.center_nucles()
-	# a.show_image()	
+	
 	file_number += 1
 	window_size = a.give_window_size()
-	a.save_window_size('output_mean_c/sizes.json')
+	# a.save_window_size('output_mean_c/sizes.json')
+	a.save_window_size('test/sizes.json')
 
 
 

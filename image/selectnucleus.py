@@ -9,31 +9,39 @@ class SelectNucleus(it.ImageTools):
     """Find each nucleus on the image, split them, enumarate and create new images with nucleus at the center"""
 
     def __init__(self, path, debug, output_name, windows_sizes = {}):
-        """Load image etc."""
+
         self.filename = path.split('/')[-1]
         self.debug = debug
         self.output_name = output_name
         self.current_frame = 0
-        self.tiff = tc.opentiff(path)
+        
 
         # just temporary
-        self.grayscale = True
         self.big_contour = []
         self.centers = []
-        self.images = []
 
-        """Loads all images from TIFF"""
-        _,temp_img = self.tiff.retrieve()
-        temp_img = np.array(temp_img, dtype=np.uint8)
-        self.images.append(temp_img)
 
-        for temp_img in self.tiff:
-            self.images.append(np.array(temp_img, dtype=np.uint8))
+        #check if tiff
+        if self.filename.split('.')[-1].lower() == 'tif':
+            self.tiff = tc.opentiff(path)
+            _,temp_img = self.tiff.retrieve()
+            temp_img = np.array(temp_img, dtype=np.uint8)
+            self.images.append(temp_img)
+            for temp_img in self.tiff:
+                self.images.append(np.array(temp_img, dtype=np.uint8))
+            self.img = np.array(self.images[0], dtype=np.uint8)
+            self.images = []
+            self.all_frames = len(self.images)
 
-        self.img = np.array(self.images[0], dtype=np.uint8)
+        else:
+            self.img_color = cv2.imread(path)
+            self.img = self.img_color
+
         self.thresh = self.img
         self.org_img = self.img.copy()
-        self.all_frames = len(self.images)
+
+        self.img_w, self.img_h = self.img.shape[:2] #TODO: check
+
         self.windows_sizes = windows_sizes
         self.window = {"max_height": 0, "max_width": 0, "min_height": self.img.shape[:2][0], "min_width": self.img.shape[:2][1]}
 
@@ -45,13 +53,8 @@ class SelectNucleus(it.ImageTools):
 
     def convert_to_grey_scale(self):
         """creates a temporary greyscale image, later on we will need RGB one too"""
-
-        if self.grayscale:
-            pass
-        else:
-            # convert to grayscale
-            pass
-
+        self.img = cv2.cvtColor(self.img_color, cv2.COLOR_BGR2GRAY)
+        self.org_img = self.img.copy()
         # We need some blurring to reduce high frequency noise
         self.img = cv2.GaussianBlur(self.img, (5, 5), 0)
 
@@ -77,7 +80,7 @@ class SelectNucleus(it.ImageTools):
 
         for i in contours:
             area = cv2.contourArea(i)  # --- find the contour having biggest area ---
-            if area > 5000:
+            if area > self.img_w * self.img_h * 0.05: #TODO: something  better is needed
                 self.big_contour.append(i)
         #check Solidity
         big_temp = []
