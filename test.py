@@ -2,10 +2,10 @@ import image.selectnucleus as sn
 import glob
 
 
-
+window_size = {}
 file_number = 0
 for file in glob.glob("/home/maciek/DOKTORAT/all_data/all_images/*"):
-	a = sn.SelectNucleus(file,False, 'output_mean_c/'+str(file_number))
+	a = sn.SelectNucleus(file,False, 'output_mean_c/'+str(file_number), window_size)
 	# for i in range (0, a.all_frames):
 	# 	a.set_frame(i)
 	# 	a.convert_to_grey_scale()
@@ -22,6 +22,8 @@ for file in glob.glob("/home/maciek/DOKTORAT/all_data/all_images/*"):
 	# # a.center_nucles()
 	# a.show_image()	
 	file_number += 1
+	window_size = a.give_window_size()
+	a.save_window_size('output_mean_c/sizes.json')
 
 
 

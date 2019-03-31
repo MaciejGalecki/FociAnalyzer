@@ -2,13 +2,15 @@ from . import imagetools as it
 import cv2
 import numpy as np
 import tiffcapture as tc
+import json
 
 
 class SelectNucleus(it.ImageTools):
     """Find each nucleus on the image, split them, enumarate and create new images with nucleus at the center"""
 
-    def __init__(self, path, debug, output_name):
+    def __init__(self, path, debug, output_name, windows_sizes = {}):
         """Load image etc."""
+        self.filename = path.split('/')[-1]
         self.debug = debug
         self.output_name = output_name
         self.current_frame = 0
@@ -32,6 +34,8 @@ class SelectNucleus(it.ImageTools):
         self.thresh = self.img
         self.org_img = self.img.copy()
         self.all_frames = len(self.images)
+        self.windows_sizes = windows_sizes
+        self.window = {"max_height": 0, "max_width": 0, "min_height": self.img.shape[:2][0], "min_width": self.img.shape[:2][1]}
 
 
     def apply_clahe(self, clipLimit=2, tileGridSize=(6,6)):
@@ -94,6 +98,12 @@ class SelectNucleus(it.ImageTools):
         if not self.debug:
             for idx, contour in enumerate(self.big_contour):
                 (x, y, w, h) = cv2.boundingRect(contour)
+                self.window["max_width"] = max(self.window["max_width"], w)
+                self.window["max_height"] = max(self.window["max_height"], h)
+                self.window["min_width"] = max(self.window["min_width"], w)
+                self.window["min_height"] = max(self.window["min_height"], h)
+                self.windows_sizes[self.filename] = self.window
+                print(self.windows_sizes)         
                 temp_img = result.copy()
                 roi = temp_img[y:y+h, x:x+w]
                 cv2.imwrite(str(self.output_name) + '_' + 'frame(' + str(self.current_frame)+ ')_' +  str(idx) + '_black' + '.jpg', roi)
@@ -109,8 +119,9 @@ class SelectNucleus(it.ImageTools):
                 cv2.rectangle(self.org_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
             cv2.drawContours(self.org_img, self.big_contour, -1, (255, 0, 0), 3)
-            cv2.imshow('i', self.org_img)
-            cv2.waitKey(0)            
+            # cv2.imshow('i', self.org_img)
+            # cv2.waitKey(0)
+            cv2.imwrite(str(self.output_name) + '_oryginal.png', self.org_img)          
 
 
 
@@ -151,4 +162,11 @@ class SelectNucleus(it.ImageTools):
         self.centers = []
         self.img = np.array(self.images[frame], dtype=np.uint8)
         self.org_img = self.img.copy()
+
+    def save_window_size(self, path):
+        with open(path, "wb") as f:
+            f.write(json.dumps(self.windows_sizes).encode("utf-8"))
+
+    def give_window_size(self):
+        return self.windows_sizes
 
