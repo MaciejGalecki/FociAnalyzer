@@ -56,7 +56,7 @@ def cell_hist(gradients):
     
     for a in range(res_h):
         for b in range(res_w):
-            fragment = gradients[a*window_size:(a+1)*window_size,b*window_size:(b+1)*window_size]
+            fragment = gradients[a*window_size:(a+1)*window_size, b*window_size:(b+1)*window_size]
             hist = np.zeros(bins_number)
         
             for row in fragment:
@@ -69,6 +69,33 @@ def cell_hist(gradients):
                         hist[0] += ((180 - pixel[1]) / bin_width) * pixel[0]
             result[a,b] = hist
     return result
+
+def cell_hist_new(gradients):
+    h, w, d  = gradients.shape
+    window_size = 8
+    res_h = int(h / window_size)
+    res_w = int(w / window_size)
+    bins_number = 9
+    bin_width = (180 / bins_number)
+    bins = np.array([bin_width * x for x in range(bins_number)])
+    result = np.zeros((res_h, res_w, bins_number))
+    
+    nbin = (gradients[:,:,1] // bin_width % 9).astype(int)
+
+    for a in range(res_h):
+        for b in range(res_w):
+            fragment = gradients[a*window_size:(a+1)*window_size, b*window_size:(b+1)*window_size]
+            hist = np.zeros(bins_number)
+            nbins_ =  nbin[a*window_size:(a+1)*window_size, b*window_size:(b+1)*window_size].ravel().astype(int)
+            if a < window_size and b < window_size:
+                np.add.at(result[a,b], nbins_, ((fragment[a,b,1] - bins[nbins_[a+b]]) / bin_width)*fragment[a,b,0])
+
+                nbins_no_max = nbins_[nbins_!= bins_number -1] + 1
+                np.add.at(result[a,b], nbins_no_max, ((bins[nbins_[a+b]] - fragment[a,b,1]) / bin_width) * fragment[a,b,0])
+
+                result[a,b,0] += (nbins_ == bins_number -1).sum() * ((180 - fragment[a,b,1]) / bin_width) * fragment[a,b,0]
+    return result
+
 
 def norm_block(block):
     norm = np.linalg.norm(block)
@@ -280,6 +307,14 @@ def main():
 if __name__ == '__main__':
     np.set_printoptions(linewidth=np.inf)
     # main()
-    img = py.imread('/home/maciek/github/FociAnalyzer/16.png')
-    # img = np.random.randint(5, size=(10,10))
-    # grads(img)
+    # img = py.imread('/home/maciek/github/FociAnalyzer/16.png')
+    img = np.random.randint(5, size=(10,10))
+    grad = grads(img)
+    a = cell_hist_new(grad)
+    b = cell_hist(grad)
+
+    print(a==b)
+
+    print(a)
+
+    print(b)
